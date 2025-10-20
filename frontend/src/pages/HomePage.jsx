@@ -16,7 +16,7 @@ function HomePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await api.get("/notes");
+        const res = await api.get("/batch");
         console.log(res.data);
         setBatch(res.data);
         setIsRateLimited(false);
@@ -50,8 +50,8 @@ function HomePage() {
 
         {batch.length > 0 && !isRateLimited && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {batch.map((note) => (
-              <BatchCard key={note._id} note={note} setBatch={setBatch}/>
+            {batch.map((batch) => (
+              <BatchCard key={batch._id} batch={batch} setBatch={setBatch}/>
             ))}
           </div>
         )}

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 // 1 create a schema
-const noteSchema = new mongoose.Schema({
+const batchSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true
@@ -16,6 +16,6 @@ const noteSchema = new mongoose.Schema({
 
 // 2 create a model based on schema
 
-const Note = mongoose.model("Note", noteSchema);
+const Batch = mongoose.model("Batch", batchSchema);
 
-export default Note;
+export default Batch;
