@@ -3,7 +3,9 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 
 import batchesRoutes from './routes/batchesRoutes.js';
-import {connectDb} from './config/db.js';
+// Note: The connectDb and rateLimiter imports are included, but the files were not provided.
+// Make sure you have 'config/db.js' and 'middleware/rateLimiter.js' in your project.
+import { connectDb } from './config/db.js';
 import rateLimiter from './middleware/rateLimiter.js';
 
 
@@ -33,5 +35,3 @@ connectDb().then(() => {
     console.log(`Server is running on port ${PORT}`);
   });
 });
-
-

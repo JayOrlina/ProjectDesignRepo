@@ -1,140 +1,224 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router";
-import { LoaderIcon } from "lucide-react";
-import { ArrowLeftIcon, Trash2Icon } from "lucide-react";
+import { LoaderIcon, ArrowLeftIcon, Trash2Icon, AlertTriangleIcon, PauseCircleIcon, PlayCircleIcon, CheckCircle2Icon } from "lucide-react";
 import api from "../lib/axios";
 import toast from "react-hot-toast";
 
+// --- Helper UI Components ---
+
+const ProgressBar = ({ value, colorClass = 'progress-primary' }) => (
+    <progress className={`progress ${colorClass} w-full`} value={value} max="100"></progress>
+);
+
+const StatusBadge = ({ status }) => {
+    const statusConfig = {
+        progressing: { icon: <PlayCircleIcon className="h-5 w-5 mr-2" />, text: 'Progressing', color: 'info' },
+        paused: { icon: <PauseCircleIcon className="h-5 w-5 mr-2" />, text: 'Paused', color: 'warning' },
+        finished: { icon: <CheckCircle2Icon className="h-5 w-5 mr-2" />, text: 'Finished', color: 'success' },
+        default: { icon: null, text: 'Unknown', color: 'ghost' }
+    };
+    const config = statusConfig[status] || statusConfig.default;
+    return (
+        <div className={`badge badge-lg badge-${config.color} gap-2 p-4`}>
+            {config.icon}
+            <span className="font-semibold">{config.text}</span>
+        </div>
+    );
+};
+
+// This is the updated component with the blinking alert functionality
+const LowSupplyAlert = ({ soilLevel, cupLevel, threshold }) => {
+    const isSoilLow = soilLevel < threshold;
+    const isCupLow = cupLevel < threshold;
+
+    if (!isSoilLow && !isCupLow) {
+        return null;
+    }
+
+    const lowSupplies = [];
+    if (isSoilLow) lowSupplies.push("Soil");
+    if (isCupLow) lowSupplies.push("Potting Cups");
+
+    return (
+        <div className="alert alert-error shadow-lg mb-6 animate-pulse">
+            <AlertTriangleIcon className="h-6 w-6 stroke-current shrink-0" />
+            <div>
+                <h3 className="font-bold">Critical Alert: Supplies Low!</h3>
+                <div className="text-xs">
+                    The process is paused. Please refill {lowSupplies.join(' and ')}.
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+const SupplyGauge = ({ label, level, threshold }) => {
+    const isLow = level < threshold;
+    const colorClass = isLow ? 'progress-error' : 'progress-success';
+
+    return (
+        <div>
+            <div className="flex justify-between items-center mb-1">
+                <span className="label-text font-medium">{label}</span>
+                <span className={`font-bold ${isLow ? 'text-error' : 'text-success'}`}>{level.toFixed(0)}%</span>
+            </div>
+            <ProgressBar value={level} colorClass={colorClass} />
+        </div>
+    );
+};
+
+
+// --- Main Page Component ---
+
 const BatchDetailPage = () => {
-  const [batch, setBatch] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+    const [batch, setBatch] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+    const { id } = useParams();
+    const pollingRef = useRef(null);
 
-  const navigate = useNavigate();
+    const LOW_SUPPLY_THRESHOLD = 20;
 
-  const { id } = useParams();
+    useEffect(() => {
+        const fetchBatch = async () => {
+            try {
+                const res = await api.get(`/batch/${id}`);
+                setBatch(res.data);
+                if (res.data.status === 'finished' && pollingRef.current) {
+                    clearInterval(pollingRef.current);
+                }
+            } catch (error) {
+                console.error("Error fetching Batch", error);
+                toast.error("Failed to fetch batch data.");
+                if (pollingRef.current) clearInterval(pollingRef.current);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-  useEffect(() => {
-    const fetchBatch = async () => {
-      try {
-        const res = await api.get(`/batch/${id}`);
-        setBatch(res.data);
-      } catch (error) {
-        console.log("Error in fetching Batch", error);
-        toast.error("Failed to fetch the Batch");
-      } finally {
-        setLoading(false);
-      }
+        fetchBatch();
+        pollingRef.current = setInterval(fetchBatch, 3000);
+
+        return () => {
+            if (pollingRef.current) {
+                clearInterval(pollingRef.current);
+            }
+        };
+    }, [id]);
+
+    const handleDelete = async () => {
+        document.getElementById('delete_modal').showModal();
     };
 
-    fetchBatch();
-  }, [id]);
-
-  const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to delete this Batch?")) return;
-
-    try {
-      await api.delete(`/batch/${id}`);
-      toast.success("Batch deleted");
-      navigate("/");
-    } catch (error) {
-      console.log("Error deleting the Batch", error);
-      toast.error("Failed to delete the Batch");
-    }
-  };
-
-  const handleSave = async () => {
-    if (!batch.title.trim() || !batch.content.trim()) {
-      toast.error("Please fill all the blanks");
-      return;
+    const confirmDelete = async () => {
+       try {
+            await api.delete(`/batch/${id}`);
+            toast.success("Batch deleted successfully");
+            navigate("/");
+        } catch (error) {
+            console.error("Error deleting the Batch", error);
+            toast.error("Failed to delete the Batch");
+        }
     }
 
-    setSaving(true);
-
-    try {
-      await api.put(`/batch/${id}`, batch);
-      toast.success("Batch updated successfully");
-      navigate("/");
-    } catch (error) {
-      console.log("Error saving the Batch", error);
-      toast.error("Failed to save the Batch");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-base-200 flex items-center justify-center">
-        <LoaderIcon className="animate-spin size-10" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-base-200">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <Link to="/" className="btn btn-ghost">
-              <ArrowLeftIcon className="h-5 w-5" />
-              Back
-            </Link>
-            <button
-              onClick={handleDelete}
-              className="btn btn-error btn-outline"
-            >
-              <Trash2Icon className="h-5 w-5" />
-              Delete
-            </button>
-          </div>
-
-          <div className="card bg-base-100">
-            <div className="card-body">
-              <div className="form-control mb-4">
-                <label className="label">
-                  <span className="label-text">Title</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Batch Title"
-                  className="input input-bordered"
-                  value={batch.title}
-                  onChange={(e) =>
-                    setBatch({ ...batch, title: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="form-control mb-4">
-                <label className="label">
-                  <span className="label-text">Content</span>
-                </label>
-                <textarea
-                  placeholder="Write your content here..."
-                  className="textarea textarea-bordered h-32"
-                  value={batch.content}
-                  onChange={(e) =>
-                    setBatch({ ...batch, content: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="card-actions justify-end">
-                <button
-                  className="btn btn-primary"
-                  disabled={saving}
-                  onClick={handleSave}
-                >
-                  {saving ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-base-200 flex items-center justify-center">
+                <LoaderIcon className="animate-spin size-10 text-primary" />
             </div>
-          </div>
+        );
+    }
+
+    if (!batch) {
+        return (
+             <div className="min-h-screen bg-base-200 flex flex-col items-center justify-center text-center">
+                <h2 className="text-2xl font-bold mb-4">Batch Not Found</h2>
+                <p className="text-gray-500 mb-6">The batch may have been deleted.</p>
+                <Link to="/" className="btn btn-primary">
+                    <ArrowLeftIcon className="h-5 w-5 mr-2" />
+                    Back to All Batches
+                </Link>
+            </div>
+        );
+    }
+
+    const progressPercentage = batch.outputCount > 0 ? (batch.potsDoneCount / batch.outputCount) * 100 : 0;
+
+    return (
+        <>
+        <div className="min-h-screen bg-base-200 p-4 sm:p-8">
+            <div className="max-w-4xl mx-auto">
+                <div className="flex items-center justify-between mb-6">
+                    <Link to="/" className="btn btn-ghost">
+                        <ArrowLeftIcon className="h-5 w-5" />
+                        Back
+                    </Link>
+                    <button onClick={handleDelete} className="btn btn-error btn-outline">
+                        <Trash2Icon className="h-5 w-5" />
+                        Delete Batch
+                    </button>
+                </div>
+
+                <div className="card bg-base-100 shadow-xl">
+                    <div className="card-body p-6 md:p-8">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-start mb-6">
+                            <div>
+                                <h1 className="card-title text-3xl font-bold mb-1">{batch.title}</h1>
+                                <p className="text-gray-500">Seed Type ID: <span className="font-semibold">{batch.seedType}</span></p>
+                            </div>
+                            <div className="mt-4 sm:mt-0">
+                                <StatusBadge status={batch.status} />
+                            </div>
+                        </div>
+
+                        <LowSupplyAlert
+                            soilLevel={batch.soilLevel}
+                            cupLevel={batch.cupLevel}
+                            threshold={LOW_SUPPLY_THRESHOLD}
+                        />
+
+                        <div className="mb-8">
+                             <label className="label">
+                                <span className="label-text text-lg font-semibold">Overall Progress</span>
+                            </label>
+                            <ProgressBar value={progressPercentage} />
+                            <div className="text-right mt-1 font-mono text-gray-600">
+                                Pots Done: {batch.potsDoneCount} / {batch.outputCount}
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                           <SupplyGauge label="Soil Supply Level" level={batch.soilLevel} threshold={LOW_SUPPLY_THRESHOLD} />
+                           <SupplyGauge label="Potting Cup Supply Level" level={batch.cupLevel} threshold={LOW_SUPPLY_THRESHOLD} />
+                        </div>
+                        
+                        <div className="mt-8">
+                            <h3 className="font-semibold text-md mb-2">Description / Notes</h3>
+                            <p className="text-gray-600 bg-base-200 p-4 rounded-lg text-sm">{batch.content}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+
+        <dialog id="delete_modal" className="modal">
+            <div className="modal-box">
+                <h3 className="font-bold text-lg">Confirm Deletion</h3>
+                <p className="py-4">Are you sure you want to delete this batch? This action cannot be undone.</p>
+                <div className="modal-action">
+                    <form method="dialog">
+                        <button className="btn mr-2">Cancel</button>
+                        <button className="btn btn-error" onClick={confirmDelete}>Delete</button>
+                    </form>
+                </div>
+            </div>
+             <form method="dialog" className="modal-backdrop">
+                <button>close</button>
+            </form>
+        </dialog>
+        </>
+    );
 };
 
 export default BatchDetailPage;
