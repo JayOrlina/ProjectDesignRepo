@@ -24,8 +24,8 @@ export async function getBatchById(req, res) {
 }
 export async function createBatch(req, res) {
     try {
-        const {title, content} = req.body
-        const batch = new Batch({ title, content });
+        const {title, content, seedType, outputCount} = req.body
+        const batch = new Batch({ title, content, seedType, outputCount });
 
         const savedBatch = await batch.save();
         res.status(201).json(savedBatch);

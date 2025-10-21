@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { PenSquareIcon, Trash2Icon } from "lucide-react";
+import { Trash2Icon } from "lucide-react";
 import { formatDate } from "../lib/utils";
 import api from "../lib/axios"
 import toast from "react-hot-toast";
@@ -33,7 +33,6 @@ const BatchCard = ({ batch, setBatch }) => {
             {formatDate(new Date(batch.createdAt))}
           </span>
           <div className="flex items-center gap-1">
-            <PenSquareIcon className="w-4 h-4 text-base-content/70" />
             <button className="btn btn-ghost btn-xs text-error" onClick={(e) => handleDelete(e, batch._id)}>
               <Trash2Icon className="size-4" />
             </button>

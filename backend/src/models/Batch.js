@@ -10,6 +10,14 @@ const batchSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    seedType: {
+        type: Number,
+        required: true
+    },
+    outputCount: {
+        type: Number,
+        required: true
+    }
 }, 
 { timestamps: true } //createdAt and updatedAt fields
 );
