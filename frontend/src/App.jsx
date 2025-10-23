@@ -1,8 +1,6 @@
-import React from "react";
 import HomePage from "./pages/HomePage";
 import CreatePage from "./pages/CreatePage";
 import { Routes, Route } from "react-router";
-import { toast } from "react-hot-toast";
 import BatchDetailPage from "./pages/BatchDetailPage";
 
 const App = () => {

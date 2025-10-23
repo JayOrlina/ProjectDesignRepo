@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams, Link } from "react-router"; 
-import { LoaderIcon, ArrowLeftIcon, Trash2Icon, AlertTriangleIcon, PauseCircleIcon, PlayCircleIcon, CheckCircle2Icon } from "lucide-react";
+import { LoaderIcon, ArrowLeftIcon, Trash2Icon, AlertTriangleIcon, PauseCircleIcon, PlayCircleIcon, CheckCircle2Icon, XCircleIcon } from "lucide-react";
 import api from "../lib/axios";
 import toast from "react-hot-toast";
 
@@ -11,11 +11,11 @@ const ProgressBar = ({ value, colorClass = 'progress-primary' }) => (
 );
 
 const StatusBadge = ({ status }) => {
-    // (This component is unchanged)
     const statusConfig = {
         Ongoing: { icon: <PlayCircleIcon className="h-5 w-5 mr-2" />, text: 'Ongoing', color: 'info' },
-        Paused: { icon: <PauseCircleIcon className="h-5 w-5 mr-2" />, text: 'Paused', color: 'warning' },
+        Paused: { icon: <PauseCircleIcon className="h-5 w-s5 mr-2" />, text: 'Paused', color: 'warning' },
         Finished: { icon: <CheckCircle2Icon className="h-5 w-5 mr-2" />, text: 'Finished', color: 'success' },
+        Cancelled: { icon: <XCircleIcon className="h-5 w-5 mr-2" />, text: 'Cancelled', color: 'ghost' },
         default: { icon: null, text: 'Unknown', color: 'ghost' }
     };
     const config = statusConfig[status] || statusConfig.default;
@@ -27,10 +27,7 @@ const StatusBadge = ({ status }) => {
     );
 };
 
-// --- UPDATED COMPONENT ---
-// This component no longer needs a 'threshold' prop
 const LowSupplyAlert = ({ soilLevel, cupLevel }) => {
-    // <-- CHANGED: Logic now checks for 0
     const isSoilLow = soilLevel === 0;
     const isCupLow = cupLevel === 0;
 
@@ -78,7 +75,7 @@ const BatchDetailPage = () => {
     const navigate = useNavigate();
     const { id } = useParams();
     const pollingRef = useRef(null);
-
+    const [isCancelling, setIsCancelling] = useState(false);
 
     useEffect(() => {
         const fetchBatch = async () => {
@@ -107,6 +104,23 @@ const BatchDetailPage = () => {
         };
     }, [id]);
 
+    const handleCancel = async () => {
+        document.getElementById('cancel_modal').showModal();
+    };
+
+    const confirmCancel = async () => {
+        setIsCancelling(true);
+        try {
+            await api.put(`/batch/${id}/cancel`);
+            toast.success("Batch cancelled successfully");
+        } catch (error) {
+            console.error("Error cancelling the Batch", error);
+            toast.error("Failed to cancel the Batch");
+        } finally {
+            setIsCancelling(false);
+        }
+    };
+    
     const handleDelete = async () => {
         document.getElementById('delete_modal').showModal();
     };
@@ -154,10 +168,24 @@ const BatchDetailPage = () => {
                         <ArrowLeftIcon className="h-5 w-5" />
                         Back
                     </Link>
-                    <button onClick={handleDelete} className="btn btn-error btn-outline">
-                        <Trash2Icon className="h-5 w-5" />
-                        Delete Batch
-                    </button>
+                    
+                    <div className="flex gap-2">
+                        {(batch.status === 'Ongoing' || batch.status === 'Paused') && (
+                            <button 
+                                onClick={handleCancel} 
+                                className="btn btn-warning btn-outline"
+                                disabled={isCancelling}
+                            >
+                                <XCircleIcon className="h-5 w-5" />
+                                {isCancelling ? "Cancelling..." : "Cancel Batch"}
+                            </button>
+                        )}
+                        <button onClick={handleDelete} className="btn btn-error btn-outline">
+                            <Trash2Icon className="h-5 w-5" />
+                            Delete Batch
+                        </button>
+                    </div>
+
                 </div>
 
                 <div className="card bg-base-100 shadow-xl">
@@ -172,7 +200,6 @@ const BatchDetailPage = () => {
                             </div>
                         </div>
 
-                        {/* <-- CHANGED: Removed 'threshold' prop */}
                         <LowSupplyAlert
                             soilLevel={batch.soilLevel}
                             cupLevel={batch.cupLevel}
@@ -188,7 +215,6 @@ const BatchDetailPage = () => {
                             </div>
                         </div>
                         
-                        {/* <-- CHANGED: Replaced 'SupplyGauge' with 'SupplyStatus' */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                            <SupplyStatus label="Soil Supply Level" level={batch.soilLevel} />
                            <SupplyStatus label="Potting Cup Supply Level" level={batch.cupLevel} />
@@ -211,6 +237,28 @@ const BatchDetailPage = () => {
                     <form method="dialog">
                         <button className="btn mr-2">Cancel</button>
                         <button className="btn btn-error" onClick={confirmDelete}>Delete</button>
+                    </form>
+                </div>
+            </div>
+             <form method="dialog" className="modal-backdrop">
+                <button>close</button>
+            </form>
+        </dialog>
+        
+        <dialog id="cancel_modal" className="modal">
+            <div className="modal-box">
+                <h3 className="font-bold text-lg">Confirm Cancellation</h3>
+                <p className="py-4">Are you sure you want to cancel this batch? The process will be stopped.</p>
+                <div className="modal-action">
+                    <form method="dialog">
+                        <button className="btn mr-2" disabled={isCancelling}>Close</button>
+                        <button 
+                            className="btn btn-warning" 
+                            onClick={confirmCancel}
+                            disabled={isCancelling}
+                        >
+                            {isCancelling ? "Cancelling..." : "Yes, Cancel"}
+                        </button>
                     </form>
                 </div>
             </div>

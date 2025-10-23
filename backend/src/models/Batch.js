@@ -25,7 +25,7 @@ const batchSchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    enum: ['Ongoing', 'Paused', 'Finished'], // The only possible states
+    enum: ['Ongoing', 'Paused', 'Finished', 'Cancelled'], 
     default: 'Ongoing' // New batches start as 'Ongoing'
   },
   soilLevel: {

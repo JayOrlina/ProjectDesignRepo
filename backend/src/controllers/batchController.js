@@ -32,8 +32,6 @@ export async function createBatch(req, res) {
         
         const batch = new Batch({ title, content, seedType, outputCount });
         const savedBatch = await batch.save();
-
-        // --- 3. ADD THIS BLOCK ---
         try {
             // Tell the hardware to start this new batch
             await axios.post(`${HARDWARE_IP}/start-batch`, {
@@ -45,7 +43,6 @@ export async function createBatch(req, res) {
             console.error("CRITICAL: Failed to contact hardware.", hwError.message);
             // This is a non-fatal error, the batch is still created.
         }
-        // -------------------------
 
         res.status(201).json(savedBatch);
 
@@ -58,7 +55,6 @@ export async function createBatch(req, res) {
 // This function now processes real-time sensor data from your hardware.
 export async function updateBatch(req, res) {
     try {
-        // The request body now expects sensor data.
         // `potsIncrement` should be 1 each time a pot passes the sensor.
         const { potsIncrement, soilLevel, cupLevel } = req.body;
 
@@ -113,5 +109,38 @@ export async function deleteBatch(req, res) {
     } catch (error) {
         console.error("Error in deleteBatch controller", error);
         res.status(500).json({ message: "Error deleting batch" });
+    }
+}
+
+export async function cancelBatch(req, res) {
+    try {
+        const batch = await Batch.findById(req.params.id);
+
+        if (!batch) {
+            return res.status(404).json({ message: "Batch not found" });
+        }
+
+        if (batch.status !== 'Ongoing' && batch.status !== 'Paused') {
+            return res.status(400).json({ message: `Batch cannot be cancelled, status is: ${batch.status}` });
+        }
+
+        // 1. Tell the hardware to stop (disarm)
+        try {
+            await axios.post(`${HARDWARE_IP}/stop-batch`);
+            console.log(`Successfully sent stop command to hardware for batch: ${batch._id}`);
+        } catch (hwError) {
+            console.error("CRITICAL: Failed to contact hardware to stop batch.", hwError.message);
+            // We'll continue anyway, but log the error
+        }
+        
+        // 2. Update the batch status in the database
+        batch.status = 'Cancelled';
+        const updatedBatch = await batch.save();
+
+        res.status(200).json(updatedBatch);
+
+    } catch (error) {
+        console.error("Error in cancelBatch controller", error);
+        res.status(500).json({ message: "Error cancelling batch" });
     }
 }

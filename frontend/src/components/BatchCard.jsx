@@ -19,7 +19,6 @@ const BatchCard = ({ batch, setBatch }) => {
     e.preventDefault();
     e.stopPropagation(); // Prevent navigation when clicking the delete icon
 
-    // Using window.confirm as per your latest code
     if (!window.confirm("Are you sure you want to delete this batch?")) return;
 
     try {
@@ -41,7 +40,6 @@ const BatchCard = ({ batch, setBatch }) => {
       className="card bg-base-100 hover:shadow-2xl transition-all duration-300 border-t-4 border-solid border-primary"
     >
       <div className="card-body">
-        {/* MODIFIED: Title section now includes the status badge */}
         <div className="flex justify-between items-start mb-2">
           <h3 className="card-title text-base-content">{batch.title}</h3>
           <div className={`badge ${getStatusBadgeColor(batch.status)} font-semibold`}>
@@ -51,7 +49,6 @@ const BatchCard = ({ batch, setBatch }) => {
 
         <p className="text-base-content/70 line-clamp-2 h-12">{batch.content}</p>
         
-        {/* NEW: Progress Bar Section */}
         <div className="my-2">
           <div className="flex justify-between text-sm mb-1 text-base-content/80">
             <span>Progress</span>

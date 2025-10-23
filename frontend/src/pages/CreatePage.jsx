@@ -23,7 +23,6 @@ const CreatePage = () => {
     }
     setLoading(true);
     try {
-      // --- CHANGE IS HERE ---
       // 1. Capture the response from the server
       const response = await api.post("/batch", {
         title,
@@ -39,7 +38,6 @@ const CreatePage = () => {
 
       // 3. Navigate to the new batch's detail page
       navigate(`/batch/${newBatch._id}`);
-      // --- END OF CHANGE ---
 
     } catch (error) {
       console.log("Error", error);
