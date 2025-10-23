@@ -1,8 +1,7 @@
 import Batch from '../models/Batch.js';
+import axios from 'axios';
 
-// --- Define the low supply threshold ---
-// If soil or cup level drops below this percentage, the process will pause.
-const LOW_SUPPLY_THRESHOLD = 20; // e.g., 20%
+const HARDWARE_IP = "http://192.168.1.50";
 
 export async function getAllBatch(_, res) {
     try {
@@ -30,10 +29,26 @@ export async function getBatchById(req, res) {
 export async function createBatch(req, res) {
     try {
         const {title, content, seedType, outputCount} = req.body;
-        // The new fields (potsDoneCount, status, etc.) will use their default values from the model
+        
         const batch = new Batch({ title, content, seedType, outputCount });
         const savedBatch = await batch.save();
+
+        // --- 3. ADD THIS BLOCK ---
+        try {
+            // Tell the hardware to start this new batch
+            await axios.post(`${HARDWARE_IP}/start-batch`, {
+                batchId: savedBatch._id
+            });
+            console.log(`Successfully sent start command to hardware for batch: ${savedBatch._id}`);
+            
+        } catch (hwError) {
+            console.error("CRITICAL: Failed to contact hardware.", hwError.message);
+            // This is a non-fatal error, the batch is still created.
+        }
+        // -------------------------
+
         res.status(201).json(savedBatch);
+
     } catch (error) {
         console.error("Error in createBatch controller", error);
         res.status(500).json({ message: "Error creating batch" });
@@ -54,7 +69,7 @@ export async function updateBatch(req, res) {
         }
 
         // If the batch is already finished, prevent further updates.
-        if (batch.status === 'finished') {
+        if (batch.status === 'Finished') {
             return res.status(400).json({ message: "This batch is already finished." });
         }
 
@@ -66,16 +81,16 @@ export async function updateBatch(req, res) {
         if (potsIncrement) batch.potsDoneCount += Number(potsIncrement);
 
         // 2. Check for low supplies and pause if necessary.
-        if (batch.soilLevel < LOW_SUPPLY_THRESHOLD || batch.cupLevel < LOW_SUPPLY_THRESHOLD) {
-            batch.status = 'paused';
+        if (batch.soilLevel == 0 || batch.cupLevel == 0) {
+            batch.status = 'Paused';
         } else {
             // 3. If supplies are sufficient, check if the batch is complete.
             if (batch.potsDoneCount >= batch.outputCount) {
-                batch.status = 'finished';
+                batch.status = 'Finished';
                 batch.potsDoneCount = batch.outputCount; // Cap the count at the target
             } else {
-                // 4. If supplies are good and it's not finished, it must be progressing.
-                batch.status = 'progressing';
+                // 4. If supplies are good and it's not finished, it must be Ongoing.
+                batch.status = 'Ongoing';
             }
         }
         

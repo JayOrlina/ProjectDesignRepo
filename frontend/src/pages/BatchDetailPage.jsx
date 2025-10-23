@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate, useParams, Link } from "react-router";
+import { useNavigate, useParams, Link } from "react-router"; 
 import { LoaderIcon, ArrowLeftIcon, Trash2Icon, AlertTriangleIcon, PauseCircleIcon, PlayCircleIcon, CheckCircle2Icon } from "lucide-react";
 import api from "../lib/axios";
 import toast from "react-hot-toast";
@@ -11,10 +11,11 @@ const ProgressBar = ({ value, colorClass = 'progress-primary' }) => (
 );
 
 const StatusBadge = ({ status }) => {
+    // (This component is unchanged)
     const statusConfig = {
-        progressing: { icon: <PlayCircleIcon className="h-5 w-5 mr-2" />, text: 'Progressing', color: 'info' },
-        paused: { icon: <PauseCircleIcon className="h-5 w-5 mr-2" />, text: 'Paused', color: 'warning' },
-        finished: { icon: <CheckCircle2Icon className="h-5 w-5 mr-2" />, text: 'Finished', color: 'success' },
+        Ongoing: { icon: <PlayCircleIcon className="h-5 w-5 mr-2" />, text: 'Ongoing', color: 'info' },
+        Paused: { icon: <PauseCircleIcon className="h-5 w-5 mr-2" />, text: 'Paused', color: 'warning' },
+        Finished: { icon: <CheckCircle2Icon className="h-5 w-5 mr-2" />, text: 'Finished', color: 'success' },
         default: { icon: null, text: 'Unknown', color: 'ghost' }
     };
     const config = statusConfig[status] || statusConfig.default;
@@ -26,10 +27,12 @@ const StatusBadge = ({ status }) => {
     );
 };
 
-// This is the updated component with the blinking alert functionality
-const LowSupplyAlert = ({ soilLevel, cupLevel, threshold }) => {
-    const isSoilLow = soilLevel < threshold;
-    const isCupLow = cupLevel < threshold;
+// --- UPDATED COMPONENT ---
+// This component no longer needs a 'threshold' prop
+const LowSupplyAlert = ({ soilLevel, cupLevel }) => {
+    // <-- CHANGED: Logic now checks for 0
+    const isSoilLow = soilLevel === 0;
+    const isCupLow = cupLevel === 0;
 
     if (!isSoilLow && !isCupLow) {
         return null;
@@ -53,17 +56,15 @@ const LowSupplyAlert = ({ soilLevel, cupLevel, threshold }) => {
 };
 
 
-const SupplyGauge = ({ label, level, threshold }) => {
-    const isLow = level < threshold;
-    const colorClass = isLow ? 'progress-error' : 'progress-success';
+const SupplyStatus = ({ label, level }) => {
+    const isLow = level === 0; // 0 = Low, 1 = Sufficient
+    const statusText = isLow ? 'Low' : 'Sufficient';
+    const colorClass = isLow ? 'text-error' : 'text-success';
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-1">
-                <span className="label-text font-medium">{label}</span>
-                <span className={`font-bold ${isLow ? 'text-error' : 'text-success'}`}>{level.toFixed(0)}%</span>
-            </div>
-            <ProgressBar value={level} colorClass={colorClass} />
+        <div className="flex justify-between items-center p-4 bg-base-200 rounded-lg">
+            <span className="label-text font-medium">{label}</span>
+            <span className={`font-bold ${colorClass} badge badge-outline badge-lg`}>{statusText}</span>
         </div>
     );
 };
@@ -78,14 +79,13 @@ const BatchDetailPage = () => {
     const { id } = useParams();
     const pollingRef = useRef(null);
 
-    const LOW_SUPPLY_THRESHOLD = 20;
 
     useEffect(() => {
         const fetchBatch = async () => {
             try {
                 const res = await api.get(`/batch/${id}`);
                 setBatch(res.data);
-                if (res.data.status === 'finished' && pollingRef.current) {
+                if (res.data.status === 'Finished' && pollingRef.current) {
                     clearInterval(pollingRef.current);
                 }
             } catch (error) {
@@ -172,10 +172,10 @@ const BatchDetailPage = () => {
                             </div>
                         </div>
 
+                        {/* <-- CHANGED: Removed 'threshold' prop */}
                         <LowSupplyAlert
                             soilLevel={batch.soilLevel}
                             cupLevel={batch.cupLevel}
-                            threshold={LOW_SUPPLY_THRESHOLD}
                         />
 
                         <div className="mb-8">
@@ -188,9 +188,10 @@ const BatchDetailPage = () => {
                             </div>
                         </div>
                         
+                        {/* <-- CHANGED: Replaced 'SupplyGauge' with 'SupplyStatus' */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                           <SupplyGauge label="Soil Supply Level" level={batch.soilLevel} threshold={LOW_SUPPLY_THRESHOLD} />
-                           <SupplyGauge label="Potting Cup Supply Level" level={batch.cupLevel} threshold={LOW_SUPPLY_THRESHOLD} />
+                           <SupplyStatus label="Soil Supply Level" level={batch.soilLevel} />
+                           <SupplyStatus label="Potting Cup Supply Level" level={batch.cupLevel} />
                         </div>
                         
                         <div className="mt-8">

@@ -1,11 +1,9 @@
 import Navbar from "../components/Navbar";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react"; 
 import RateLimitedUI from "../components/RateLimitedUI";
-import { useEffect } from "react";
-import axios from "axios";
 import { toast } from "react-hot-toast";
-import BatchCard   from "../components/BatchCard";
-import api from "../lib/axios"
+import BatchCard from "../components/BatchCard";
+import api from "../lib/axios";
 import NotFound from "../components/NotFound";
 
 function HomePage() {
@@ -35,9 +33,18 @@ function HomePage() {
     fetchData();
   }, []);
 
+  // This memo checks if any batch is currently 'Ongoing' or 'Paused'.
+  // It automatically updates whenever the 'batch' array changes (e.g., on load or after a delete).
+  const isBatchActive = useMemo(() => {
+    return batch.some(
+      (b) => b.status === 'Ongoing' || b.status === 'Paused'
+    );
+  }, [batch]);
+
+
   return (
     <div className="min-h-screen">
-      <Navbar />
+      <Navbar isBatchActive={isBatchActive} />
 
       {isRateLimited && <RateLimitedUI />}
 
@@ -51,7 +58,7 @@ function HomePage() {
         {batch.length > 0 && !isRateLimited && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {batch.map((batch) => (
-              <BatchCard key={batch._id} batch={batch} setBatch={setBatch}/>
+              <BatchCard key={batch._id} batch={batch} setBatch={setBatch} />
             ))}
           </div>
         )}

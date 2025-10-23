@@ -17,27 +17,26 @@ const batchSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
-  // --- NEW FIELDS ---
   potsDoneCount: {
     type: Number,
     required: true,
-    default: 0 // Starts at 0 when a batch is created
+    default: 0
   },
   status: {
     type: String,
     required: true,
-    enum: ['progressing', 'paused', 'finished'], // The only possible states
-    default: 'progressing' // New batches start as 'progressing'
+    enum: ['Ongoing', 'Paused', 'Finished'], // The only possible states
+    default: 'Ongoing' // New batches start as 'Ongoing'
   },
   soilLevel: {
-    type: Number, // Assuming this is a percentage (0-100)
-    required: true,
-    default: 100
+    type: Number,
+    enum: [0,1],
+    default: 1
   },
   cupLevel: {
-    type: Number, // Assuming this is a percentage (0-100)
-    required: true,
-    default: 100
+    type: Number, 
+    enum: [0,1],
+    default: 1
   }
 }, { timestamps: true });
 

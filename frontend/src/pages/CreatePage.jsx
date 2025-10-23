@@ -23,29 +23,45 @@ const CreatePage = () => {
     }
     setLoading(true);
     try {
-      await api.post("/batch", {
+      // --- CHANGE IS HERE ---
+      // 1. Capture the response from the server
+      const response = await api.post("/batch", {
         title,
         content,
         seedType: parseInt(seedType, 10),
         outputCount: parseInt(outputCount, 10),
       });
-      toast.success("Created Successfully");
-      navigate("/");
+
+      // 2. Get the new batch data (which includes the _id)
+      const newBatch = response.data;
+      
+      toast.success("Batch created! Starting...");
+
+      // 3. Navigate to the new batch's detail page
+      navigate(`/batch/${newBatch._id}`);
+      // --- END OF CHANGE ---
 
     } catch (error) {
       console.log("Error", error);
-      if (error.response && error.response.status === 429) {
+      
+      // Specific error for hardware failure
+      if (error.response && error.response.data && error.response.data.message === "Batch created, but hardware not contacted") {
+        toast.error("Batch created, but failed to start hardware. Check hardware connection.");
+        // We can still navigate to the page even if hardware failed to start
+        navigate(`/batch/${error.response.data.batch._id}`);
+
+      } else if (error.response && error.response.status === 429) {
         toast.error("Slow down! You're submitting too fast", {
           duration: 3000,
         });
       } else {
-        toast.error("Failed to create");
+        toast.error("Failed to create batch");
       }
-
     } finally {
       setLoading(false);
     }
   };
+
   return (
     <div className="min-h-screen bg-base-200">
       <div className='container mx-auto px-4 py-8'>
@@ -90,7 +106,6 @@ const CreatePage = () => {
                     value={seedType}
                     onChange={(e) => setSeedType(e.target.value)}
                   >
-                    {/* Added a disabled placeholder option */}
                     <option value="" disabled>Select a seed type</option>
                     <option value="1">Lettuce Type 1</option>
                     <option value="2">Lettuce Type 2</option>
@@ -117,7 +132,6 @@ const CreatePage = () => {
                     {loading ? "Starting..." : "Start"}
                   </button>
                 </div>
-
               </form>
             </div>
           </div>

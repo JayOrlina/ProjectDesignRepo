@@ -7,9 +7,9 @@ import toast from "react-hot-toast";
 // Helper function to determine the color of the status badge
 const getStatusBadgeColor = (status) => {
   switch (status) {
-    case 'progressing': return 'badge-info';
-    case 'paused': return 'badge-warning';
-    case 'finished': return 'badge-success';
+    case 'Ongoing': return 'badge-info';
+    case 'Paused': return 'badge-warning';
+    case 'Finished': return 'badge-success';
     default: return 'badge-ghost';
   }
 };
